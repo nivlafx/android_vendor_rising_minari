@@ -16,11 +16,41 @@
 # -----------------------------------------------------------------
 # RisingOS OTA update package
 
-RISING_TARGET_UPDATEPACKAGE := $(PRODUCT_OUT)/$(LINEAGE_VERSION)-fastboot.zip
+RISING_TARGET_UPDATEPACKAGE := $(PRODUCT_OUT)/$(BUNDLED_VERSION)-fastboot.zip
+RISING_BUNDLED_UPDATEPACKAGE := $(PRODUCT_OUT)/$(LINEAGE_VERSION)-update.zip
 
-.PHONY: updatepackage dinner
+# Scripts, Bootloader & Radio files
+ifneq (,$(filter cheetah,$(CURRENT_DEVICE)))
+UPDATE_LINUX_SCRIPT := vendor/rising/tools/update-linux-cheetah.sh
+UPDATE_WINDOWS_SCRIPT := vendor/rising/tools/update-windows-cheetah.ps1
+endif
+ifneq (,$(filter oriole,$(CURRENT_DEVICE)))
+UPDATE_LINUX_SCRIPT := vendor/rising/tools/update-linux-oriole.sh
+UPDATE_WINDOWS_SCRIPT := vendor/rising/tools/update-windows-oriole.ps1
+endif
+ifneq (,$(filter panther,$(CURRENT_DEVICE)))
+UPDATE_LINUX_SCRIPT := vendor/rising/tools/update-linux-panther.sh
+UPDATE_WINDOWS_SCRIPT := vendor/rising/tools/update-windows-panther.ps1
+endif
+ifneq (,$(filter raven,$(CURRENT_DEVICE)))
+UPDATE_LINUX_SCRIPT := vendor/rising/tools/update-linux-raven.sh
+UPDATE_WINDOWS_SCRIPT := vendor/rising/tools/update-windows-raven.ps1
+endif
+
+ifneq (,$(filter oriole raven,$(CURRENT_DEVICE)))
+	VENDOR_BOOTLOADER := vendor/google/$(CURRENT_DEVICE)/bootloader-$(CURRENT_DEVICE)-slider-1.3-10780582.img
+	VENDOR_RADIO := vendor/google/$(CURRENT_DEVICE)/radio-$(CURRENT_DEVICE)-g5300q-230927-231102-b-11040898.img radio-$(CURRENT_DEVICE)-g5123b-125137-231014-b-10950115.img
+endif
+ifneq (,$(filter cheetah panther,$(CURRENT_DEVICE)))
+	VENDOR_BOOTLOADER := vendor/google/$(CURRENT_DEVICE)/bootloader-$(CURRENT_DEVICE)-cloudripper-14.0-10825040.img
+	VENDOR_RADIO := vendor/google/$(CURRENT_DEVICE)/radio-$(CURRENT_DEVICE)-g5300q-230927-231102-b-11040898.img
+endif
+.PHONY: updatepackage
 updatepackage: $(INTERNAL_UPDATE_PACKAGE_TARGET)
 	$(hide) ln -f $(INTERNAL_UPDATE_PACKAGE_TARGET) $(RISING_TARGET_UPDATEPACKAGE)
+ifneq (,$(filter cheetah oriole panther raven,$(CURRENT_DEVICE)))
+	$(hide) zip -j -u $(RISING_BUNDLED_UPDATEPACKAGE) $(RISING_TARGET_UPDATEPACKAGE) $(UPDATE_LINUX_SCRIPT) $(UPDATE_WINDOWS_SCRIPT) $(VENDOR_BOOTLOADER) $(VENDOR_RADIO)
+endif
 	@echo ""
 	@echo "                                                                " >&2
 	@echo "                                                                " >&2
@@ -40,6 +70,7 @@ updatepackage: $(INTERNAL_UPDATE_PACKAGE_TARGET)
 	@echo " Size            : $(shell du -hs $(RISING_TARGET_UPDATEPACKAGE) | awk '{print $$1}')"
 	@echo " Size(in bytes)  : $(shell wc -c $(RISING_TARGET_UPDATEPACKAGE) | awk '{print $$1}')"
 	@echo " Package Complete: $(RISING_TARGET_UPDATEPACKAGE)               " >&2
+	@echo " Package Complete: $(RISING_BUNDLED_UPDATEPACKAGE)               " >&2
 	@echo "****************************************************************" >&2
 	@echo ""
-dinner: updatepackage
+
